@@ -125,6 +125,7 @@ Gen.para <- function(Parameters, K, Tau){
   return(Para.H)
 }
 
+# within-study sample sizes randomly drawn from NB distributions
 genN <- function(Nbar, K){
   if (Nbar==50){
     Nsd=18
@@ -144,6 +145,7 @@ genN <- function(Nbar, K){
   return(N)
 }
 
+# generating data from primary studies assuming posttest variance of the treatment group equals to 1
 data_gen <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
   # value converting
   d.cs.M = r2d(a.s)
@@ -196,6 +198,7 @@ data_gen <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
   return(dat)
 }
 
+# generating data from primary studies assuming posttest variance of the treatment group equals to 1.5
 data_gen_HV <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
   # value converting
   d.cs.M = r2d(a.s)
@@ -261,6 +264,7 @@ data_gen_HV <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
   return(dat)
 }
 
+# a posttest mediation analysis based on a large simulated sample to determine the true values of PSMMA
 gen_post <- function(a.s, cp.s, b.s, Rho, N, HV=1,p=.5){
   c.s = a.s*b.s+cp.s
   n.exp=n.ctl=N/2
@@ -279,6 +283,7 @@ gen_post <- function(a.s, cp.s, b.s, Rho, N, HV=1,p=.5){
   return(c(a.ps, cp.ps, b.ps))
 }
 
+# generating correlation matrices to be analyzed in OSMASEM (Study1)
 dg.ps <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
   # generating true values with heterogeneity for individual studies
   c.s = StCoef['a']*StCoef['b']+StCoef['cp']
@@ -345,6 +350,7 @@ dg.ps <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
   return(data4MA)
 }
 
+# generating correlation matrices to be analyzed in OSMASEM (Study2)
 dg.ps2 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
   # generating true values with heterogeneity for individual studies
   c.s = StCoef['a']*StCoef['b']+StCoef['cp']
@@ -403,6 +409,8 @@ dg.ps2 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
   return(data4MA)
 }
 
+
+# generating correlation matrices to be analyzed in OSMASEM (Study3)
 dg.ps3 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
   # generating true values with heterogeneity for individual studies
   c.s = StCoef['a']*StCoef['b']+StCoef['cp']
@@ -410,7 +418,7 @@ dg.ps3 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
   para.h = Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
   # generate sample size for individual studies
   N = genN(Nbar, K)
-  data4MA <- list(CS=list(),PS=list(), Morris=list(),N = c())
+  data4MA <- list(CS=list(),PS=list(),N = c())
   data4MA[['N']] <- N
   
   for(ki in 1:K){
@@ -429,7 +437,7 @@ dg.ps3 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
                         c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
     }
     
-    for(i in 1:3){
+    for(i in 1:2){
       data4MA[[i]][[ki]] <- Gen.matrix()
     }
 
@@ -451,19 +459,12 @@ dg.ps3 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
     data4MA[['PS']][[ki]][1,3]=data4MA[['PS']][[ki]][3,1]=rXY.ps
     data4MA[['PS']][[ki]][2,3]=data4MA[['PS']][[ki]][3,2]=cor(dat$M.post, dat$Y.post)
 
-    # Morris method
-    d.mo.M <- cal.pre.d.PS(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
-    d.mo.Y <- cal.pre.d.PS(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.mo = d2r(d.mo.M, n.exp, n.ctl)
-    rXY.mo = d2r(d.mo.Y, n.exp, n.ctl)
-    data4MA[['Morris']][[ki]][1,2]=data4MA[['Morris']][[ki]][2,1]=rXM.mo
-    data4MA[['Morris']][[ki]][1,3]=data4MA[['Morris']][[ki]][3,1]=rXY.mo
-    data4MA[['Morris']][[ki]][2,3]=data4MA[['Morris']][[ki]][3,2]=cor(dat$M.post, dat$Y.post)
   }
   return(data4MA)
 }
 
 
+# generating correlation matrices to be analyzed in OSMASEM (Study4)
 dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos, p=.5){
   # generating true values with heterogeneity for individual studies
   c.s = StCoef['a']*StCoef['b']+StCoef['cp']
@@ -471,7 +472,7 @@ dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos
   para.h = Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
   # generate sample size for individual studies
   N = genN(Nbar, K)
-  data4MA <- list(CS=list(), PS=list(),Morris=list(),N = c())
+  data4MA <- list(CS=list(), PS=list(),N = c())
   data4MA[['N']] <- N
   # generate index for studies WITH missing correlation. 
   # 0 represents NO missing correlation introduced
@@ -495,7 +496,7 @@ dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos
                         c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
     }
     
-    for(i in 1:3){
+    for(i in 1:2){
       data4MA[[i]][[ki]] <- Gen.matrix()
     }
     
@@ -517,25 +518,17 @@ dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos
     data4MA[['PS']][[ki]][1,3]=data4MA[['PS']][[ki]][3,1]=rXY.ps
     data4MA[['PS']][[ki]][2,3]=data4MA[['PS']][[ki]][3,2] = cor(dat$M.post, dat$Y.post)
     
-    # Morris method
-    d.mo.M <- cal.pre.d.PS(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
-    d.mo.Y <- cal.pre.d.PS(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.mo = d2r(d.mo.M, n.exp, n.ctl)
-    rXY.mo = d2r(d.mo.Y, n.exp, n.ctl)
-    data4MA[['Morris']][[ki]][1,2]=data4MA[['Morris']][[ki]][2,1]=rXM.mo
-    data4MA[['Morris']][[ki]][1,3]=data4MA[['Morris']][[ki]][3,1]=rXY.mo
-    data4MA[['Morris']][[ki]][2,3]=data4MA[['Morris']][[ki]][3,2] = cor(dat$M.post, dat$Y.post)
-    
+
     if(missingPos == '1'){
       if(missingCor_index[ki]==1){
-        for(i in 1:3){
+        for(i in 1:2){
           data4MA[[i]][[ki]][2,3]=data4MA[[i]][[ki]][3,2] = NA
         }
       }
     }
     if(missingPos=='0'){
       if(missingCor_index[ki]==1){
-        for(i in 1:3){
+        for(i in 1:2){
           data4MA[[i]][[ki]][1,2]=data4MA[[i]][[ki]][2,1] = NA
           data4MA[[i]][[ki]][1,3]=data4MA[[i]][[ki]][3,1] = NA
         }
@@ -545,7 +538,7 @@ dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos
   return(data4MA)
 }
 
-
+# extracting results from OSMASEM
 extMA <- function(Fit){
   s = summary(Fit)
   Est = s$parameters[1:3,'Estimate']  # a cp b
@@ -568,7 +561,7 @@ extMA <- function(Fit){
   return(res)
 }
 
-
+# conducting mediation meta-analysis using OSMASEM (Study1)
 ma1 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
   RES = list()
   res.i = matrix(NA, nrep, 16)
@@ -611,6 +604,7 @@ ma1 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
   return(RES)
 }
 
+# conducting mediation meta-analysis using OSMASEM (Study2)
 ma2 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
   RES = list()
   res.i = matrix(NA, nrep, 16)
@@ -652,16 +646,16 @@ ma2 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
   }
   return(RES)
 }
-
+# conducting mediation meta-analysis using OSMASEM (Study3&4)
 ma34 <- function(StCoef, K, Tau, Nbar, Rho, nrep,MCrate=0,missingPos=NULL, hetero_post_var=1){
   RES = list()
   res.i = matrix(NA, nrep, 16)
   colnames(res.i) <- c('a.est', 'cp.est', 'b.est', 'c.est','ab.est',
                        'a.se','cp.se','b.se','ab.se.delta',
                        'cov.a','cov.b','cov.ab','a.p','cp.p','b.p','infoDef')
-  for(i in 1:3){ 
+  for(i in 1:2){ 
     RES[[i]] = res.i
-  };names(RES) <- c('CS','PS','Morris')
+  };names(RES) <- c('CS','PS')
   
   # model
   MedM <- 'M ~ a*X
@@ -678,9 +672,9 @@ ma34 <- function(StCoef, K, Tau, Nbar, Rho, nrep,MCrate=0,missingPos=NULL, heter
     }else{dat = try(dg.ps4(StCoef, K, Tau, Nbar, Rho, hetero_post_var,MCrate,missingPos, p=0.5))}
 
     if(inherits(dat, 'try-error')){
-      RES[[1]][i,]=RES[[2]][i,]=RES[[3]][i,]=rep(NA, 16)
+      RES[[1]][i,]=RES[[2]][i,]=rep(NA, 16)
     }else{
-      for(j in 1:3){
+      for(j in 1:2){
         df <- Cor2DataFrame(dat[[j]], dat$N)
         fit0 = try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
         if(inherits(fit0, 'try-error')){
@@ -699,7 +693,7 @@ ma34 <- function(StCoef, K, Tau, Nbar, Rho, nrep,MCrate=0,missingPos=NULL, heter
 }
 
 
-
+# deleting results which are not positive definite
 select_res <- function(data){
   nrow = nrow(data); ncol = ncol(data)
   for(i in 1:nrow){
@@ -711,7 +705,8 @@ select_res <- function(data){
   return(data)
 }
 
-## performance measures
+## functions for performance measures
+# EBIAS
 cal.eBias <- function(theta.hat, theta){
   if(theta==0){
     Ebias <- mean(theta.hat)-theta
@@ -730,6 +725,7 @@ cal.CR <- function(SE, theta, theta.hat){
   return(CR)
 }
 
+# function to calculate performance measures
 cal_res <- function(data,a.s,cp.s,b.s){
   p=.5
   sigma.X = sqrt(p*(1-p))
