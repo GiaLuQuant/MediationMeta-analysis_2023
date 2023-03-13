@@ -40,16 +40,18 @@ r2d <- function(R){
 }
 
 d2r <- function(D, n1, n2){
-  a = (n1+n2)^2 / (n1*n2)
+  a <- (n1+n2)^2 / (n1*n2)
   return(D/sqrt(D^2+a))
 }
 
-dcs2dtb <- function(dcs, rho){
-  return(dcs * sqrt(2*(1-rho)))
+dcs2dtb <- function(dcs, rho, postSD){
+  dtb <- dcs * sqrt((6-4*rho*(postSD+1)+2*postSD^2) / (postSD^2+3))
+  return(dtb)
 }
 
-dtb2dcs <- function(dtb, rho){
-  return(dtb / sqrt(2*(1-rho)))
+dtb2dcs <- function(dtb, rho, postSD){
+  dcs <- dtb / sqrt((6-4*rho*(postSD+1)+2*postSD^2) / (postSD^2+3))
+  return(dcs)
 }
 
 ## functions for the 5 methods being compared in study 1
@@ -72,14 +74,14 @@ cal.tb.d <- function(E.pre, E.post, C.pre, C.post,n.exp, n.ctl){
 }
 # the d-change method (Becker, 1988)
 cal.dChange <- function(E.pre, E.post, C.pre, C.post){
-  d.e = mean(E.post-E.pre) / sd(E.pre)
-  d.c = mean(C.post-C.pre) / sd(C.pre)
+  d.e <- mean(E.post-E.pre) / sd(E.pre)
+  d.c <- mean(C.post-C.pre) / sd(C.pre)
   return(d.e-d.c)
 }
 # Cohen's d with pooled pretest sd (recommended by Morris in 2008)
 cal.pre.d <- function(E.pre, E.post, C.pre, C.post, n.exp, n.ctl){
-  md = mean(E.post-E.pre)- mean(C.post-C.pre)
-  s = sqrt(((n.ctl-1)*var(C.pre)+(n.exp-1)*var(E.pre))/(n.ctl+n.exp-2))
+  md <- mean(E.post-E.pre)- mean(C.post-C.pre)
+  s <- sqrt(((n.ctl-1)*var(C.pre)+(n.exp-1)*var(E.pre))/(n.ctl+n.exp-2))
   return(md/s)
 }
 
@@ -100,16 +102,16 @@ cal.tb.d.PS <- function(E.pre, E.post, C.pre, C.post,n.exp, n.ctl){
 }
 # Cohen's d with pooled pretest sd (recommended by Morris in 2008)
 cal.pre.d.PS <- function(E.pre, E.post, C.pre, C.post, n.exp, n.ctl){
-  md = mean(E.post)- mean(C.post)
-  s = sqrt(((n.ctl-1)*var(C.pre)+(n.exp-1)*var(E.pre))/(n.ctl+n.exp-2))
+  md <- mean(E.post)- mean(C.post)
+  s <- sqrt(((n.ctl-1)*var(C.pre)+(n.exp-1)*var(E.pre))/(n.ctl+n.exp-2))
   return(md/s)
 }
 
 # generating a new matrix
 Gen.matrix <- function(){
-  cm.ps=matrix(NA, 3,3)
-  colnames(cm.ps) = rownames(cm.ps) = c('X', 'M', 'Y')
-  diag(cm.ps) = 1
+  cm.ps <- matrix(NA, 3,3)
+  colnames(cm.ps) <- rownames(cm.ps) <- c('X', 'M', 'Y')
+  diag(cm.ps) <- 1
   return(cm.ps)
 }
 
@@ -125,108 +127,50 @@ Gen.para <- function(Parameters, K, Tau){
   return(Para.H)
 }
 
-# within-study sample sizes randomly drawn from NB distributions
 genN <- function(Nbar, K){
   if (Nbar==50){
-    Nsd=18
-    size = (0.2*Nbar^2)/(Nsd^2-.1*Nbar)
-    N = rnbinom(K,size=size, mu=0.6*Nbar) + 0.4*Nbar
+    Nsd <- 18
+    size <- (0.2*Nbar^2)/(Nsd^2-.1*Nbar)
+    N <- rnbinom(K,size=size, mu=0.6*Nbar) + 0.4*Nbar
   }
   if (Nbar==80){
-    Nsd=23
-    size = (0.1*Nbar^2)/(Nsd^2-.2*Nbar)
-    N = rnbinom(K,size=size, mu=0.6*Nbar) + 0.4*Nbar
+    Nsd <- 23
+    size <- (0.1*Nbar^2)/(Nsd^2-.2*Nbar)
+    N <- rnbinom(K,size=size, mu=0.6*Nbar) + 0.4*Nbar
   }
   if (Nbar==150){
-    Nsd=30
-    size = (0.1*Nbar^2)/(Nsd^2-.1*Nbar)
-    N = rnbinom(K,size=size, mu=0.7*Nbar) + 0.3*Nbar
+    Nsd <- 30
+    size <- (0.1*Nbar^2)/(Nsd^2-.1*Nbar)
+    N <- rnbinom(K,size=size, mu=0.7*Nbar) + 0.3*Nbar
   }
   return(N)
 }
 
-# generating data from primary studies assuming posttest variance of the treatment group equals to 1
-data_gen <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
+data_gen <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,postSD,p=.5){
   # value converting
-  d.cs.M = r2d(a.s)
-  d.cs.Y = r2d(c.s)
-  d.tb.M = dcs2dtb(d.cs.M, Rho)
-  d.tb.Y = dcs2dtb(d.cs.Y, Rho)
+  d.cs.M <- r2d(a.s)
+  d.cs.Y <- r2d(c.s)
+  d.tb.M <- dcs2dtb(d.cs.M, Rho, postSD)
+  d.tb.Y <- dcs2dtb(d.cs.Y, Rho, postSD)
   
   # variances for variables
-  sigma.X2 = p*(1-p)
-  sigma.Mg2 = sigma.Yg2 = 2*(1-Rho)
-  sigma.Mcs2 = sigma.Mg2 + d.tb.M^2/4
-  sigma.Ycs2 = sigma.Yg2 + d.tb.Y^2/4
+  sigma.X2 <- p*(1-p)
+  sigma.Mcs.C2 <- sigma.Ycs.C2 <- 2*(1-Rho)
+  sigma.Mcs.T2 <- sigma.Ycs.T2 <- 1 - 2*Rho*postSD + postSD^2
+
+  sigma.Mcs2 <- (sigma.Mcs.C2+sigma.Mcs.T2)/2 + d.tb.M^2 * (postSD^2+3)/16
+  sigma.Ycs2 <- (sigma.Ycs.C2+sigma.Ycs.T2)/2 + d.tb.Y^2 * (postSD^2+3)/16
   
   # unstandardized coefficients
-  a.u = a.s* sqrt(sigma.Mcs2/sigma.X2)
-  b.u = b.s* sqrt(sigma.Ycs2/sigma.Mcs2)
-  cp.u = cp.s* sqrt(sigma.Ycs2/sigma.X2)
+  a.u <- a.s* sqrt(sigma.Mcs2/sigma.X2)
+  b.u <- b.s* sqrt(sigma.Ycs2/sigma.Mcs2)
+  cp.u <- cp.s* sqrt(sigma.Ycs2/sigma.X2)
   c.u <- a.u*b.u + cp.u
 
   # generating M
-  Rho.pp = matrix(c(1,Rho,Rho,1),2,2)
-  mu.M.exp <- c(0, d.tb.M); mu.M.ctl <- c(0,0)
-  M.exp <- mvrnorm(n.exp, mu.M.exp, Rho.pp)
-  M.ctl <- mvrnorm(n.ctl, mu.M.ctl, Rho.pp)
-  M.T.cs <- M.exp[,2] - M.exp[,1]
-  M.C.cs <- M.ctl[,2] - M.ctl[,1]
-  M.cs <- c(M.C.cs, M.T.cs)
-  M.post <- c(M.ctl[,2], M.exp[,2])
-  M.pre <- c(M.ctl[,1], M.exp[,1])
-  
-  # Genrating Y
-  sigma.eYcs2T =sigma.eYcs2C= sigma.Yg2 - b.u^2*sigma.Mg2 
-  e.Ycs.T = rnorm(n.exp, 0, sqrt(sigma.eYcs2T))
-  e.Ycs.C = rnorm(n.ctl, 0, sqrt(sigma.eYcs2C))
-  e.Ypre.T = rnorm(n.exp,0,sqrt((1+Rho)/2))
-  e.Ypre.C = rnorm(n.ctl,0,sqrt((1+Rho)/2))
-  Y.T.cs = d.tb.Y-b.u*d.tb.M+b.u*M.T.cs+e.Ycs.T
-  Y.C.cs =b.u*M.C.cs+e.Ycs.C
-  Y.cs = c(Y.C.cs, Y.T.cs)
-  Y.T.pre = d.tb.Y/2 - Y.T.cs/2 + e.Ypre.T
-  Y.C.pre = -Y.C.cs/2 + e.Ypre.C
-  Y.pre = c(Y.C.pre, Y.T.pre)
-  Y.post = Y.pre+Y.cs 
-  
-  dat <- list(X=X,Mcs = M.cs, Ycs = Y.cs, M.post = M.post, Y.post = Y.post,
-              M.T.pre = M.exp[,1], M.T.post = M.exp[,2], 
-              M.C.pre = M.ctl[,1], M.C.post = M.ctl[,2], 
-              Y.T.pre = Y.T.pre, Y.T.post = Y.post[X==1], 
-              Y.C.pre = Y.C.pre, Y.C.post = Y.post[X==0])
-  return(dat)
-}
-
-# generating data from primary studies assuming posttest variance of the treatment group equals to 1.5
-data_gen_HV <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
-  # value converting
-  d.cs.M = r2d(a.s)
-  d.cs.Y = r2d(c.s)
-  d.tb.M = d.cs.M*sqrt(2.25-2*Rho)
-  d.tb.Y = d.cs.Y*sqrt(2.25-2*Rho)
-  
-  # variances for variables
-  sigma.X2 = p*(1-p)
-  sigma.McsT2 = sigma.eMcsT2 =  2.5-2*Rho
-  sigma.McsC2 = sigma.eMcsC2 = 2-2*Rho
-  sigma.Mcs2 = (sigma.McsT2+sigma.McsC2)/2 + (1.125*d.tb.M)^2/4
-  
-  sigma.YcsT2 = 2.5-2*Rho
-  sigma.YcsC2 = 2-2*Rho
-  sigma.Ycs2 = (sigma.YcsT2+sigma.YcsC2)/2 + (1.125*d.tb.Y)^2/4
-  
-  # unstandardized coefficients
-  a.u = a.s* sqrt(sigma.Mcs2/sigma.X2)
-  b.u = b.s* sqrt(sigma.Ycs2/sigma.Mcs2)
-  cp.u = cp.s* sqrt(sigma.Ycs2/sigma.X2)
-  c.u <- a.u*b.u + cp.u
-  
-  # generating M
-  Rho.pp.C = matrix(c(1,Rho,Rho,1),2,2)
-  Rho.pp.T = matrix(c(1,Rho,Rho,1.5),2,2)
-  
-  mu.M.exp <- c(0, (1.125*d.tb.M)); mu.M.ctl <- c(0,0)
+  Rho.pp.T <- matrix(c(1,Rho*postSD,Rho*postSD,postSD^2),2,2)
+  Rho.pp.C <- matrix(c(1,Rho,Rho,1),2,2)
+  mu.M.exp <- c(0, d.tb.M*(sqrt(postSD^2+3)/2)); mu.M.ctl <- c(0,0)
   M.exp <- mvrnorm(n.exp, mu.M.exp, Rho.pp.T)
   M.ctl <- mvrnorm(n.ctl, mu.M.ctl, Rho.pp.C)
   M.T.cs <- M.exp[,2] - M.exp[,1]
@@ -236,25 +180,24 @@ data_gen_HV <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
   M.pre <- c(M.ctl[,1], M.exp[,1])
   
   # Genrating Y
-  sigma.eYcsT2 = sigma.YcsT2 - b.u^2*sigma.McsT2
-  sigma.eYcsC2 = sigma.YcsC2 - b.u^2*sigma.McsC2
-
-  e.Ycs.T = rnorm(n.exp, 0, sqrt(sigma.eYcsT2))
-  e.Ycs.C = rnorm(n.ctl, 0, sqrt(sigma.eYcsC2))
+  sigma.eYcs2C <- sigma.Ycs.C2 - b.u^2*sigma.Mcs.C2
+  sigma.eYcs2T <- sigma.Ycs.T2 - b.u^2*sigma.Mcs.T2
   
-  sigma.eYpreT2 = 1 - (Rho-1)^2/(2.5-2*Rho)
-  e.Ypre.T = rnorm(n.exp,0,sqrt(sigma.eYpreT2))
-  e.Ypre.C = rnorm(n.ctl,0,sqrt((1+Rho)/2))
+  e.Ycs.T <- rnorm(n.exp, 0, sqrt(sigma.eYcs2T))
+  e.Ycs.C <- rnorm(n.ctl, 0, sqrt(sigma.eYcs2C))
   
-  iY.T.cs = 1.125*d.tb.Y - 1.125*b.u*d.tb.M 
-  Y.T.cs = iY.T.cs + b.u*M.T.cs + e.Ycs.T
-  Y.C.cs = b.u*M.C.cs + e.Ycs.C
-  Y.cs = c(Y.C.cs, Y.T.cs)
+  Y.T.cs <- (d.tb.Y - b.u*d.tb.M)*sqrt((3+postSD^2)/4) + b.u*M.T.cs + e.Ycs.T
+  Y.C.cs <- b.u*M.C.cs + e.Ycs.C
+  Y.cs <- c(Y.C.cs, Y.T.cs)
   
-  Y.T.pre = ((Rho-1)/(2.5-2*Rho))*(Y.T.cs - 1.125*d.tb.Y) + e.Ypre.T
-  Y.C.pre = -Y.C.cs/2 + e.Ypre.C
-  Y.pre = c(Y.C.pre, Y.T.pre)
-  Y.post = Y.pre+Y.cs 
+  e.Ypre.T <- rnorm(n.exp,0, sqrt(postSD^2*(1-Rho^2)/sigma.Ycs.T2))
+  e.Ypre.C <- rnorm(n.ctl,0, sqrt((1+Rho)/2))
+  
+  Y.T.pre <- ((1-Rho*postSD)/sigma.Ycs.T2) * (d.tb.Y*sqrt((3+postSD^2)/4) - Y.T.cs) + e.Ypre.T
+  Y.C.pre <- -(1/2)*Y.C.cs + e.Ypre.C
+  
+  Y.pre <- c(Y.C.pre, Y.T.pre)
+  Y.post <- Y.pre+Y.cs 
   
   dat <- list(X=X,Mcs = M.cs, Ycs = Y.cs, M.post = M.post, Y.post = Y.post,
               M.T.pre = M.exp[,1], M.T.post = M.exp[,2], 
@@ -264,120 +207,108 @@ data_gen_HV <- function(a.s,cp.s, b.s, c.s,Rho,X,n.exp,n.ctl,p=.5){
   return(dat)
 }
 
-# a posttest mediation analysis based on a large simulated sample to determine the true values of PSMMA
-gen_post <- function(a.s, cp.s, b.s, Rho, N, HV=1,p=.5){
-  c.s = a.s*b.s+cp.s
-  n.exp=n.ctl=N/2
-  X = c(rep(0,n.ctl), rep(1,n.exp))
-  if(HV==1){
-    dat = data_gen(a.s, cp.s, b.s, c.s, Rho, X, n.exp, n.ctl, p=.5)
-  }else{dat = data_gen_HV(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                    c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)}
+
+gen_post <- function(a.s, cp.s, b.s, Rho, N, postVar,p=.5){
+  c.s <- a.s*b.s+cp.s
+  n.exp <- n.ctl <- N/2
+  X <- c(rep(0,n.ctl), rep(1,n.exp))
+  dat <- data_gen(a.s, cp.s, b.s, c.s, Rho, X, n.exp, n.ctl,sqrt(postVar), p=.5)
+
+  eq1 <- lm(dat$M.post~X)
+  eq2 <- lm(dat$Y.post~dat$M.post+X)
   
-  eq1 = lm(dat$M.post~X)
-  eq2 = lm(dat$Y.post~dat$M.post+X)
-  
-  a.ps = summary(eq1)$coefficients['X','Estimate']*(sd(X)/sd(dat$M.post))
-  cp.ps = summary(eq2)$coefficients['X','Estimate']*(sd(X)/sd(dat$Y.post))
-  b.ps = summary(eq2)$coefficients['dat$M.post','Estimate']*(sd(dat$M.post)/sd(dat$Y.post))
+  a.ps <- coef(eq1)['X']*(sd(X)/sd(dat$M.post))
+  cp.ps <- coef(eq2)['X']*(sd(X)/sd(dat$Y.post))
+  b.ps <- coef(eq2)['dat$M.post']*(sd(dat$M.post)/sd(dat$Y.post))
   return(c(a.ps, cp.ps, b.ps))
 }
 
-# generating correlation matrices to be analyzed in OSMASEM (Study1)
-dg.ps <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
+dg.ps <- function(StCoef, K, Tau, Nbar, Rho, postVar, p=.5){
   # generating true values with heterogeneity for individual studies
-  c.s = StCoef['a']*StCoef['b']+StCoef['cp']
-  r.XY = c.s; r.XM = StCoef['a']; r.MY = StCoef['a']*StCoef['cp']+StCoef['b']
+  c.s <- StCoef['a']*StCoef['b']+StCoef['cp']
+  r.XY <- c.s; r.XM <- StCoef['a']; r.MY <- StCoef['a']*StCoef['cp']+StCoef['b']
   para.h = Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
   # generate sample size for individual studies
-  N = genN(Nbar, K)
+  N <- genN(Nbar, K)
   data4MA <- list(TB=list(), CS=list(),Becker=list(), Morris=list(),N = c())
   data4MA[['N']] <- N
   
   for(ki in 1:K){
     # converting r.i into path coefficients
-    a.s = para.h[ki,'r.XM'];c.s=para.h[ki,'r.XY']
-    b.s = (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
-    cp.s = c.s-a.s*b.s
+    a.s <- para.h[ki,'r.XM'];c.s=para.h[ki,'r.XY']
+    b.s <- (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
+    cp.s <- c.s-a.s*b.s
     
-    X = sort(rbinom(N[ki], 1, p))
-    n.exp=sum(X==1); n.ctl=sum(X==0)
-    if(hetero_post_var==1){
-      dat = data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                     c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }else{
-      dat = data_gen_HV(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                     c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }
+    X <- sort(rbinom(N[ki], 1, p))
+    n.exp <- sum(X==1); n.ctl <- sum(X==0)
+    dat <- data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
+                   c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl, sqrt(postVar))
+
     for(i in 1:4){
       data4MA[[i]][[ki]] <- Gen.matrix()
-      data4MA[[i]][[ki]][2,3]=data4MA[[i]][[ki]][3,2] = cor(dat$Mcs, dat$Ycs)
+      data4MA[[i]][[ki]][2,3] <- data4MA[[i]][[ki]][3,2] <- cor(dat$Mcs, dat$Ycs)
     }
 
     ## calculating effect sizes using the 5 methods
     # TB method 
     d.tb.M <- cal.tb.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
     d.tb.Y <- cal.tb.d(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.tb = d2r(d.tb.M, n.exp, n.ctl)
-    rXY.tb = d2r(d.tb.Y, n.exp, n.ctl)
-    data4MA[['TB']][[ki]][1,2]=data4MA[['TB']][[ki]][2,1]=rXM.tb
-    data4MA[['TB']][[ki]][1,3]=data4MA[['TB']][[ki]][3,1]=rXY.tb
+    rXM.tb <- d2r(d.tb.M, n.exp, n.ctl)
+    rXY.tb <- d2r(d.tb.Y, n.exp, n.ctl)
+    data4MA[['TB']][[ki]][1,2] <- data4MA[['TB']][[ki]][2,1] <- rXM.tb
+    data4MA[['TB']][[ki]][1,3] <- data4MA[['TB']][[ki]][3,1] <- rXY.tb
     
     # CS method
-    d.cs.M = cal.cs.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
+    d.cs.M <- cal.cs.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
     d.cs.Y <- cal.cs.d(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.cs = d2r(d.cs.M, n.exp, n.ctl)
-    rXY.cs = d2r(d.cs.Y, n.exp, n.ctl)
-    data4MA[['CS']][[ki]][1,2]=data4MA[['CS']][[ki]][2,1]=rXM.cs
-    data4MA[['CS']][[ki]][1,3]=data4MA[['CS']][[ki]][3,1]=rXY.cs
+    rXM.cs <- d2r(d.cs.M, n.exp, n.ctl)
+    rXY.cs <- d2r(d.cs.Y, n.exp, n.ctl)
+    data4MA[['CS']][[ki]][1,2] <- data4MA[['CS']][[ki]][2,1] <- rXM.cs
+    data4MA[['CS']][[ki]][1,3] <- data4MA[['CS']][[ki]][3,1] <- rXY.cs
     
     # Becker method
     d.B.M <- cal.dChange(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post)
     d.B.Y <- cal.dChange(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post)
-    rXM.B = d2r(d.B.M, n.exp, n.ctl)
-    rXY.B = d2r(d.B.Y, n.exp, n.ctl)
-    data4MA[['Becker']][[ki]][1,2]=data4MA[['Becker']][[ki]][2,1]=rXM.B
-    data4MA[['Becker']][[ki]][1,3]=data4MA[['Becker']][[ki]][3,1]=rXY.B
+    rXM.B <- d2r(d.B.M, n.exp, n.ctl)
+    rXY.B <- d2r(d.B.Y, n.exp, n.ctl)
+    data4MA[['Becker']][[ki]][1,2] <- data4MA[['Becker']][[ki]][2,1] <- rXM.B
+    data4MA[['Becker']][[ki]][1,3] <- data4MA[['Becker']][[ki]][3,1] <- rXY.B
     
     # Morris method
     d.mo.M <- cal.pre.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
     d.mo.Y <- cal.pre.d(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.mo = d2r(d.mo.M, n.exp, n.ctl)
-    rXY.mo = d2r(d.mo.Y, n.exp, n.ctl)
-    data4MA[['Morris']][[ki]][1,2]=data4MA[['Morris']][[ki]][2,1]=rXM.mo
-    data4MA[['Morris']][[ki]][1,3]=data4MA[['Morris']][[ki]][3,1]=rXY.mo
+    rXM.mo <- d2r(d.mo.M, n.exp, n.ctl)
+    rXY.mo <- d2r(d.mo.Y, n.exp, n.ctl)
+    data4MA[['Morris']][[ki]][1,2] <- data4MA[['Morris']][[ki]][2,1] <- rXM.mo
+    data4MA[['Morris']][[ki]][1,3] <- data4MA[['Morris']][[ki]][3,1] <- rXY.mo
   }
   return(data4MA)
 }
 
-# generating correlation matrices to be analyzed in OSMASEM (Study2)
-dg.ps2 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
+dg.ps2 <- function(StCoef, K, Tau, Nbar, Rho, postVar, p=.5){
   # generating true values with heterogeneity for individual studies
-  c.s = StCoef['a']*StCoef['b']+StCoef['cp']
-  r.XY = c.s; r.XM = StCoef['a']; r.MY = StCoef['a']*StCoef['cp']+StCoef['b']
-  para.h = Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
+  c.s <- StCoef['a']*StCoef['b']+StCoef['cp']
+  r.XY <- c.s; r.XM <- StCoef['a']; r.MY <- StCoef['a']*StCoef['cp']+StCoef['b']
+  para.h <- Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
   # generate sample size for individual studies
-  N = genN(Nbar, K)
+  N <- genN(Nbar, K)
   data4MA <- list(TB=list(), PS=list(), Morris=list(),N = c())
   data4MA[['N']] <- N
   for(ki in 1:K){
     # converting r.i into path coefficients
-    a.s = para.h[ki,'r.XM'];c.s=para.h[ki,'r.XY']
-    b.s = (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
-    cp.s = c.s-a.s*b.s
+    a.s <- para.h[ki,'r.XM'];c.s <- para.h[ki,'r.XY']
+    b.s <- (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
+    cp.s <- c.s-a.s*b.s
     
-    X = sort(rbinom(N[ki], 1, p))
-    n.exp=sum(X==1); n.ctl=sum(X==0)
-    if(hetero_post_var==1){
-      dat = data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                     c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }else{
-      dat = data_gen_HV(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                        c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }
+    X <- sort(rbinom(N[ki], 1, p))
+    n.exp <- sum(X==1); n.ctl <- sum(X==0)
+    dat <- data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
+                   c.s=c.s,Rho=Rho, X,n.exp=n.exp, 
+                   n.ctl=n.ctl, postSD=sqrt(postVar))
+
     for(i in 1:3){
       data4MA[[i]][[ki]] <- Gen.matrix()
-      data4MA[[i]][[ki]][2,3]=data4MA[[i]][[ki]][3,2] = cor(dat$M.post, dat$Y.post)
+      data4MA[[i]][[ki]][2,3] <- data4MA[[i]][[ki]][3,2] <- cor(dat$M.post, dat$Y.post)
       
     }
 
@@ -385,152 +316,106 @@ dg.ps2 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
     # TB method 
     d.tb.M <- cal.tb.d.PS(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
     d.tb.Y <- cal.tb.d.PS(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.tb = d2r(d.tb.M, n.exp, n.ctl)
-    rXY.tb = d2r(d.tb.Y, n.exp, n.ctl)
-    data4MA[['TB']][[ki]][1,2]=data4MA[['TB']][[ki]][2,1]=rXM.tb
-    data4MA[['TB']][[ki]][1,3]=data4MA[['TB']][[ki]][3,1]=rXY.tb
+    rXM.tb <- d2r(d.tb.M, n.exp, n.ctl)
+    rXY.tb <- d2r(d.tb.Y, n.exp, n.ctl)
+    data4MA[['TB']][[ki]][1,2] <- data4MA[['TB']][[ki]][2,1] <- rXM.tb
+    data4MA[['TB']][[ki]][1,3] <- data4MA[['TB']][[ki]][3,1] <- rXY.tb
     
     # PS method
     d.ps.M <- cal.post.d(dat$M.T.post, dat$M.C.post, n.exp, n.ctl)
     d.ps.Y <- cal.post.d(dat$Y.T.post, dat$Y.C.post, n.exp, n.ctl)
-    rXM.ps = d2r(d.ps.M, n.exp, n.ctl)
-    rXY.ps = d2r(d.ps.Y, n.exp, n.ctl)
-    data4MA[['PS']][[ki]][1,2]=data4MA[['PS']][[ki]][2,1]=rXM.ps
-    data4MA[['PS']][[ki]][1,3]=data4MA[['PS']][[ki]][3,1]=rXY.ps
+    rXM.ps <- d2r(d.ps.M, n.exp, n.ctl)
+    rXY.ps <- d2r(d.ps.Y, n.exp, n.ctl)
+    data4MA[['PS']][[ki]][1,2] <- data4MA[['PS']][[ki]][2,1] <- rXM.ps
+    data4MA[['PS']][[ki]][1,3] <- data4MA[['PS']][[ki]][3,1] <- rXY.ps
     
     # Morris method
     d.mo.M <- cal.pre.d.PS(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
     d.mo.Y <- cal.pre.d.PS(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.mo = d2r(d.mo.M, n.exp, n.ctl)
-    rXY.mo = d2r(d.mo.Y, n.exp, n.ctl)
-    data4MA[['Morris']][[ki]][1,2]=data4MA[['Morris']][[ki]][2,1]=rXM.mo
-    data4MA[['Morris']][[ki]][1,3]=data4MA[['Morris']][[ki]][3,1]=rXY.mo
+    rXM.mo <- d2r(d.mo.M, n.exp, n.ctl)
+    rXY.mo <- d2r(d.mo.Y, n.exp, n.ctl)
+    data4MA[['Morris']][[ki]][1,2] <- data4MA[['Morris']][[ki]][2,1] <- rXM.mo
+    data4MA[['Morris']][[ki]][1,3] <- data4MA[['Morris']][[ki]][3,1] <- rXY.mo
   }
   return(data4MA)
 }
 
-
-# generating correlation matrices to be analyzed in OSMASEM (Study3)
-dg.ps3 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5){
+dg.ps34 <- function(StCoef, K, Tau, Nbar, Rho, postVar, p=.5, MCrate=0, missingPos=NULL){
   # generating true values with heterogeneity for individual studies
-  c.s = StCoef['a']*StCoef['b']+StCoef['cp']
-  r.XY = c.s; r.XM = StCoef['a']; r.MY = StCoef['a']*StCoef['cp']+StCoef['b']
+  c.s <- StCoef['a']*StCoef['b']+StCoef['cp']
+  r.XY <- c.s; r.XM <- StCoef['a']; r.MY <- StCoef['a']*StCoef['cp']+StCoef['b']
   para.h = Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
   # generate sample size for individual studies
-  N = genN(Nbar, K)
-  data4MA <- list(CS=list(),PS=list(),N = c())
+  N <- genN(Nbar, K)
+  data4MA <- list(CS=list(),PS=list(), Morris=list(),N = c())
   data4MA[['N']] <- N
   
+  if(MCrate!=0){
+    # generate index for studies WITH missing correlation. 
+    # 0 represents NO missing correlation introduced
+    num.missing <- MCrate*K; num.NM <- K-num.missing
+    missingCor_index <- rep(c(0,1),times <- c(K-MCrate*K, MCrate*K))
+    missingCor_index <- sample(missingCor_index)
+  }
+
   for(ki in 1:K){
     # converting r.i into path coefficients
-    a.s = para.h[ki,'r.XM'];c.s=para.h[ki,'r.XY']
-    b.s = (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
-    cp.s = c.s-a.s*b.s
+    a.s <- para.h[ki,'r.XM'];c.s <- para.h[ki,'r.XY']
+    b.s <- (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
+    cp.s <- c.s-a.s*b.s
     
-    X = sort(rbinom(N[ki], 1, p))
-    n.exp=sum(X==1); n.ctl=sum(X==0)
-    if(hetero_post_var==1){
-      dat = data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                     c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }else{
-      dat = data_gen_HV(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                        c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }
+    X <- sort(rbinom(N[ki], 1, p))
+    n.exp <- sum(X==1); n.ctl <- sum(X==0)
+    dat <- data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
+                   c.s=c.s,Rho=Rho, X,n.exp=n.exp, 
+                   n.ctl=n.ctl, postSD=sqrt(postVar))
     
-    for(i in 1:2){
+    for(i in 1:3){
       data4MA[[i]][[ki]] <- Gen.matrix()
     }
 
     ## calculating effect sizes using the 5 methods
     # CS method
-    d.cs.M = cal.cs.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
+    d.cs.M <- cal.cs.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
     d.cs.Y <- cal.cs.d(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.cs = d2r(d.cs.M, n.exp, n.ctl)
-    rXY.cs = d2r(d.cs.Y, n.exp, n.ctl)
-    data4MA[['CS']][[ki]][1,2]=data4MA[['CS']][[ki]][2,1]=rXM.cs
-    data4MA[['CS']][[ki]][1,3]=data4MA[['CS']][[ki]][3,1]=rXY.cs
-    data4MA[['CS']][[ki]][2,3]=data4MA[['CS']][[ki]][3,2]=cor(dat$Mcs, dat$Ycs)
+    rXM.cs <- d2r(d.cs.M, n.exp, n.ctl)
+    rXY.cs <- d2r(d.cs.Y, n.exp, n.ctl)
+    data4MA[['CS']][[ki]][1,2] <- data4MA[['CS']][[ki]][2,1] <- rXM.cs
+    data4MA[['CS']][[ki]][1,3] <- data4MA[['CS']][[ki]][3,1] <- rXY.cs
+    data4MA[['CS']][[ki]][2,3] <- data4MA[['CS']][[ki]][3,2] <- cor(dat$Mcs, dat$Ycs)
+
     # PS method
     d.ps.M <- cal.post.d(dat$M.T.post, dat$M.C.post, n.exp, n.ctl)
     d.ps.Y <- cal.post.d(dat$Y.T.post, dat$Y.C.post, n.exp, n.ctl)
-    rXM.ps = d2r(d.ps.M, n.exp, n.ctl)
-    rXY.ps = d2r(d.ps.Y, n.exp, n.ctl)
-    data4MA[['PS']][[ki]][1,2]=data4MA[['PS']][[ki]][2,1]=rXM.ps
-    data4MA[['PS']][[ki]][1,3]=data4MA[['PS']][[ki]][3,1]=rXY.ps
-    data4MA[['PS']][[ki]][2,3]=data4MA[['PS']][[ki]][3,2]=cor(dat$M.post, dat$Y.post)
+    rXM.ps <- d2r(d.ps.M, n.exp, n.ctl)
+    rXY.ps <- d2r(d.ps.Y, n.exp, n.ctl)
+    data4MA[['PS']][[ki]][1,2] <- data4MA[['PS']][[ki]][2,1] <- rXM.ps
+    data4MA[['PS']][[ki]][1,3] <- data4MA[['PS']][[ki]][3,1] <- rXY.ps
+    data4MA[['PS']][[ki]][2,3] <- data4MA[['PS']][[ki]][3,2] <- cor(dat$M.post, dat$Y.post)
 
-  }
-  return(data4MA)
-}
-
-
-# generating correlation matrices to be analyzed in OSMASEM (Study4)
-dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos, p=.5){
-  # generating true values with heterogeneity for individual studies
-  c.s = StCoef['a']*StCoef['b']+StCoef['cp']
-  r.XY = c.s; r.XM = StCoef['a']; r.MY = StCoef['a']*StCoef['cp']+StCoef['b']
-  para.h = Gen.para(c(r.XM,r.MY,r.XY), K, Tau)
-  # generate sample size for individual studies
-  N = genN(Nbar, K)
-  data4MA <- list(CS=list(), PS=list(),N = c())
-  data4MA[['N']] <- N
-  # generate index for studies WITH missing correlation. 
-  # 0 represents NO missing correlation introduced
-  num.missing=MCrate*K; num.NM = K-num.missing
-  missingCor_index=rep(c(0,1),times=c(K-MCrate*K, MCrate*K))
-  missingCor_index=sample(missingCor_index)
-  for(ki in 1:K){
-    # converting r.i into path coefficients
-    a.s = para.h[ki,'r.XM'];c.s=para.h[ki,'r.XY']
-    b.s = (para.h[ki,'r.MY']-a.s*c.s)/(1-a.s^2)
-    cp.s = c.s-a.s*b.s
+    # Morris method
+    d.mo.M <- cal.pre.d.PS(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
+    d.mo.Y <- cal.pre.d.PS(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
+    rXM.mo <- d2r(d.mo.M, n.exp, n.ctl)
+    rXY.mo <- d2r(d.mo.Y, n.exp, n.ctl)
+    data4MA[['Morris']][[ki]][1,2] <- data4MA[['Morris']][[ki]][2,1] <- rXM.mo
+    data4MA[['Morris']][[ki]][1,3] <- data4MA[['Morris']][[ki]][3,1] <- rXY.mo
+    data4MA[['Morris']][[ki]][2,3] <- data4MA[['Morris']][[ki]][3,2] <- cor(dat$M.post, dat$Y.post)
     
-    X = sort(rbinom(N[ki], 1, p))
-    n.exp=sum(X==1); n.ctl=sum(X==0)
-    
-    if(hetero_post_var==1){
-      dat = data_gen(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                     c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }else{
-      dat = data_gen_HV(a.s=a.s, cp.s=cp.s,b.s=b.s,
-                        c.s=c.s,Rho=Rho, X,n.exp=n.exp, n.ctl=n.ctl)
-    }
-    
-    for(i in 1:2){
-      data4MA[[i]][[ki]] <- Gen.matrix()
-    }
-    
-    # CS method
-    d.cs.M = cal.cs.d(dat$M.T.pre,dat$M.T.post,dat$M.C.pre, dat$M.C.post, n.exp, n.ctl)
-    d.cs.Y <- cal.cs.d(dat$Y.T.pre,dat$Y.T.post,dat$Y.C.pre, dat$Y.C.post, n.exp, n.ctl)
-    rXM.cs = d2r(d.cs.M, n.exp, n.ctl)
-    rXY.cs = d2r(d.cs.Y, n.exp, n.ctl)
-    data4MA[['CS']][[ki]][1,2]=data4MA[['CS']][[ki]][2,1]=rXM.cs
-    data4MA[['CS']][[ki]][1,3]=data4MA[['CS']][[ki]][3,1]=rXY.cs
-    data4MA[['CS']][[ki]][2,3]=data4MA[['CS']][[ki]][3,2] = cor(dat$Mcs, dat$Ycs)
-    
-    # PS method
-    d.ps.M <- cal.post.d(dat$M.T.post, dat$M.C.post, n.exp, n.ctl)
-    d.ps.Y <- cal.post.d(dat$Y.T.post, dat$Y.C.post, n.exp, n.ctl)
-    rXM.ps = d2r(d.ps.M, n.exp, n.ctl)
-    rXY.ps = d2r(d.ps.Y, n.exp, n.ctl)
-    data4MA[['PS']][[ki]][1,2]=data4MA[['PS']][[ki]][2,1]=rXM.ps
-    data4MA[['PS']][[ki]][1,3]=data4MA[['PS']][[ki]][3,1]=rXY.ps
-    data4MA[['PS']][[ki]][2,3]=data4MA[['PS']][[ki]][3,2] = cor(dat$M.post, dat$Y.post)
-    
-
-    if(missingPos == '1'){
-      if(missingCor_index[ki]==1){
-        for(i in 1:2){
-          data4MA[[i]][[ki]][2,3]=data4MA[[i]][[ki]][3,2] = NA
+    if(MCrate!=0){
+      if(missingPos == '1'){
+        if(missingCor_index[ki]==1){
+          for(i in 1:3){
+            data4MA[[i]][[ki]][2,3]=data4MA[[i]][[ki]][3,2] = NA
+          }
         }
       }
-    }
-    if(missingPos=='0'){
-      if(missingCor_index[ki]==1){
-        for(i in 1:2){
-          data4MA[[i]][[ki]][1,2]=data4MA[[i]][[ki]][2,1] = NA
-          data4MA[[i]][[ki]][1,3]=data4MA[[i]][[ki]][3,1] = NA
+      if(missingPos=='0'){
+        if(missingCor_index[ki]==1){
+          for(i in 1:3){
+            data4MA[[i]][[ki]][1,2]=data4MA[[i]][[ki]][2,1] = NA
+            data4MA[[i]][[ki]][1,3]=data4MA[[i]][[ki]][3,1] = NA
+          }
         }
       }
     }
@@ -538,7 +423,6 @@ dg.ps4 <- function(StCoef, K, Tau, Nbar, Rho, hetero_post_var, MCrate,missingPos
   return(data4MA)
 }
 
-# extracting results from OSMASEM
 extMA <- function(Fit){
   s = summary(Fit)
   Est = s$parameters[1:3,'Estimate']  # a cp b
@@ -561,15 +445,15 @@ extMA <- function(Fit){
   return(res)
 }
 
-# conducting mediation meta-analysis using OSMASEM (Study1)
-ma1 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
-  RES = list()
-  res.i = matrix(NA, nrep, 16)
+
+ma1 <- function(StCoef, K, Tau, Nbar, Rho, nrep, postVar){
+  RES <- list()
+  res.i <- matrix(NA, nrep, 16)
   colnames(res.i) <- c('a.est', 'cp.est', 'b.est', 'c.est','ab.est',
                        'a.se','cp.se','b.se','ab.se.delta',
                        'cov.a','cov.b','cov.ab','a.p','cp.p','b.p','infoDef')
   for(i in 1:4){ 
-    RES[[i]] = res.i
+    RES[[i]] <- res.i
   };names(RES) <- c('TB','CS','Becker','Morris')
 
   # model
@@ -582,13 +466,13 @@ ma1 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
   T0 <- create.Tau2(RAM=RAM1, RE.type='Diag', Transform="expLog", RE.startvalues=0.05)
 
   for (i in 1:nrep){
-    dat = try(dg.ps(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=.5))
+    dat <- try(dg.ps(StCoef, K, Tau, Nbar, Rho, postVar, p=.5))
     if(inherits(dat, 'try-error')){
       RES[[1]][i,]=RES[[2]][i,]=RES[[3]][i,]=RES[[4]][i,]=rep(NA, 16)
     }else{
       for(j in 1:4){
         df <- Cor2DataFrame(dat[[j]], dat$N)
-        fit0 = try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
+        fit0 <- try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
         if(inherits(fit0, 'try-error')){
           res <- c(rep(NA, 16))
         }else{
@@ -597,22 +481,21 @@ ma1 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
             res[16] <- -1
           }else{res<- extMA(fit0)}
         }
-        RES[[j]][i,]=res
+        RES[[j]][i,] <- res
       }
     }
   }
   return(RES)
 }
 
-# conducting mediation meta-analysis using OSMASEM (Study2)
-ma2 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
-  RES = list()
-  res.i = matrix(NA, nrep, 16)
+ma2 <- function(StCoef, K, Tau, Nbar, Rho, nrep, postVar){
+  RES <- list()
+  res.i <- matrix(NA, nrep, 16)
   colnames(res.i) <- c('a.est', 'cp.est', 'b.est', 'c.est','ab.est',
                        'a.se','cp.se','b.se','ab.se.delta',
                        'cov.a','cov.b','cov.ab','a.p','cp.p','b.p','infoDef')
   for(i in 1:3){ 
-    RES[[i]] = res.i
+    RES[[i]] <- res.i
   };names(RES) <- c('TB','PS','Morris')
   
   # model
@@ -625,13 +508,13 @@ ma2 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
   T0 <- create.Tau2(RAM=RAM1, RE.type='Diag', Transform="expLog", RE.startvalues=0.05)
   
   for (i in 1:nrep){
-    dat = try(dg.ps2(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=0.5))
+    dat <- try(dg.ps2(StCoef, K, Tau, Nbar, Rho, postVar, p=0.5))
     if(inherits(dat, 'try-error')){
       RES[[1]][i,]=RES[[2]][i,]=RES[[3]][i,]=rep(NA, 16)
     }else{
       for(j in 1:3){
         df <- Cor2DataFrame(dat[[j]], dat$N)
-        fit0 = try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
+        fit0 <- try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
         if(inherits(fit0, 'try-error')){
           res <- c(rep(NA, 16))
         }else{
@@ -640,22 +523,22 @@ ma2 <- function(StCoef, K, Tau, Nbar, Rho, nrep, hetero_post_var=1){
             res[16] <- -1
           }else{res<- extMA(fit0)}
         }
-        RES[[j]][i,]=res
+        RES[[j]][i,] <- res
       }
     }
   }
   return(RES)
 }
-# conducting mediation meta-analysis using OSMASEM (Study3&4)
-ma34 <- function(StCoef, K, Tau, Nbar, Rho, nrep,MCrate=0,missingPos=NULL, hetero_post_var=1){
-  RES = list()
-  res.i = matrix(NA, nrep, 16)
+
+ma34 <- function(StCoef, K, Tau, Nbar, Rho, nrep,MCrate=0,missingPos=NULL, postVar){
+  RES <- list()
+  res.i <- matrix(NA, nrep, 16)
   colnames(res.i) <- c('a.est', 'cp.est', 'b.est', 'c.est','ab.est',
                        'a.se','cp.se','b.se','ab.se.delta',
                        'cov.a','cov.b','cov.ab','a.p','cp.p','b.p','infoDef')
-  for(i in 1:2){ 
-    RES[[i]] = res.i
-  };names(RES) <- c('CS','PS')
+  for(i in 1:3){ 
+    RES[[i]] <- res.i
+  };names(RES) <- c('CS','PS','Morris')
   
   # model
   MedM <- 'M ~ a*X
@@ -667,46 +550,39 @@ ma34 <- function(StCoef, K, Tau, Nbar, Rho, nrep,MCrate=0,missingPos=NULL, heter
   T0 <- create.Tau2(RAM=RAM1, RE.type='Diag', Transform="expLog", RE.startvalues=0.05)
   
   for (i in 1:nrep){
-    if(MCrate==0){
-      dat = try(dg.ps3(StCoef, K, Tau, Nbar, Rho, hetero_post_var, p=0.5))
-    }else{dat = try(dg.ps4(StCoef, K, Tau, Nbar, Rho, hetero_post_var,MCrate,missingPos, p=0.5))}
+    dat <- try(dg.ps34(StCoef, K, Tau, Nbar, Rho, postVar, p=0.5, MCrate=MCrate, missingPos=missingPos))
 
     if(inherits(dat, 'try-error')){
-      RES[[1]][i,]=RES[[2]][i,]=rep(NA, 16)
+      RES[[1]][i,]=RES[[2]][i,]=RES[[3]][i,]=rep(NA, 16)
     }else{
-      for(j in 1:2){
+      for(j in 1:3){
         df <- Cor2DataFrame(dat[[j]], dat$N)
-        fit0 = try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
+        fit0 <- try(osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df))
         if(inherits(fit0, 'try-error')){
           res <- c(rep(NA, 16))
         }else{
           if(summary(fit0)$infoDefinite==FALSE){
             res <- extMA(fit0) 
             res[16] <- -1
-          }else{res<- extMA(fit0)}
+          }else{res <- extMA(fit0)}
         }
-        RES[[j]][i,]=res
+        RES[[j]][i,] <- res
       }
     }
   }
   return(RES)
 }
 
-
-# deleting results which are not positive definite
 select_res <- function(data){
-  nrow = nrow(data); ncol = ncol(data)
-  for(i in 1:nrow){
+  for(i in 1:nrow(data)){
     if (data[i,'infoDef']==-1){
-      data[i,]=rep(NA,ncol)
+      data[i,] <- rep(NA,ncol(data))
     }
   }
-  data = remove_empty(data, which='rows')
-  return(data)
+  return(remove_empty(data, which='rows'))
 }
 
-## functions for performance measures
-# EBIAS
+## performance measures
 cal.eBias <- function(theta.hat, theta){
   if(theta==0){
     Ebias <- mean(theta.hat)-theta
@@ -716,27 +592,25 @@ cal.eBias <- function(theta.hat, theta){
 
 # coverage rate
 cal.CR <- function(SE, theta, theta.hat){
-  cv.error = qnorm(1-0.05/2) * SE
-  l = theta.hat-cv.error  # lower bound
-  u = theta.hat+cv.error  # upper bound
-  lcriterion = (theta >= l)
-  ucriterion = (theta <= u)
-  CR = mean(lcriterion*ucriterion)
+  cv.error <- qnorm(1-0.05/2) * SE
+  l <- theta.hat-cv.error  # lower bound
+  u <- theta.hat+cv.error  # upper bound
+  lcriterion <- (theta >= l)
+  ucriterion <- (theta <= u)
+  CR <- mean(lcriterion*ucriterion)
   return(CR)
 }
 
-# function to calculate performance measures
-cal_res <- function(data,a.s,cp.s,b.s){
-  p=.5
-  sigma.X = sqrt(p*(1-p))
+cal_res <- function(data,a.s,cp.s,b.s, p=.5){
+  sigma.X <- sqrt(p*(1-p))
   # deleting negative-definite repetitions
   data.s <- select_res(data)
   
   # calculating EBIAS
-  bias = c(mean(data.s[,'a.est']-a.s)/sigma.X, 
+  bias <- c(mean(data.s[,'a.est']-a.s)/sigma.X, 
            mean(data.s[,'b.est']-b.s),
            mean(data.s[,'ab.est']-a.s*b.s)/sigma.X)
-  Ebias = c(cal.eBias(data.s[,'a.est']/sigma.X, a.s/sigma.X), 
+  Ebias <- c(cal.eBias(data.s[,'a.est']/sigma.X, a.s/sigma.X), 
             cal.eBias(data.s[,'b.est'],b.s),
             cal.eBias(data.s[,'ab.est']/sigma.X, a.s*b.s/sigma.X))
   
@@ -756,9 +630,9 @@ cal_res <- function(data,a.s,cp.s,b.s){
   ab.RR.delta <- mean(ab.p.delta<=0.025)
   
   # coverage rate
-  a.CR = cal.CR(SE = sqrt(data.s[,'cov.a']), theta = a.s, theta.hat = data.s[,'a.est'])
-  b.CR = cal.CR(SE = sqrt(data.s[,'cov.b']), theta = b.s, theta.hat = data.s[,'b.est'])
-  ab.CR.delta = cal.CR(SE = data.s[,'ab.se.delta'], theta = (a.s*b.s), theta.hat = data.s[,'ab.est'])
+  a.CR <- cal.CR(SE = sqrt(data.s[,'cov.a']), theta = a.s, theta.hat = data.s[,'a.est'])
+  b.CR <- cal.CR(SE = sqrt(data.s[,'cov.b']), theta = b.s, theta.hat = data.s[,'b.est'])
+  ab.CR.delta <- cal.CR(SE = data.s[,'ab.se.delta'], theta = (a.s*b.s), theta.hat = data.s[,'ab.est'])
 
   # convergence rate & postive definite rate
   ConvRate <- 1 - mean(is.na(data[,'a.est']))
