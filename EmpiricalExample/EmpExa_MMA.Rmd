@@ -1,7 +1,19 @@
+---
+title: "EmpiricalExample"
+author: "Zhiming Lu"
+date: "2023-04-20"
+output: html_document
+---
+
+## Functions to calculate effect sizes
+```{r}
+
+# converting d to r
 d2r <- function(D, n1, n2){
   a = (n1+n2)^2 / (n1*n2)
   return(D/sqrt(D^2+a))
 }
+
 
 ES.cs <- function(MD.exp, MD.ctl, sd.exp, sd.ctl, n.exp, n.ctl){
   md <- MD.exp-MD.ctl
@@ -28,18 +40,19 @@ CI2sd <- function(MD, upper, N){
   return(sd)
 }
 
-# n1=n2
+# textbook d, n1=n2
 tbd <- function(m1, sd1, m2, sd2){
   md = m1-m2
   sd = (sd1+sd2)/2
   return(md/sd)
 }
+# tbd with pre and posttest SDs of both groups available
 tbd4 <- function(m1, sd1, m2, sd2, mc1,sdc1, mc2, sdc2){
   md = m1-m2 - (mc1-mc2)
   sd = (sd1+sd2+sdc1+sdc2)/4
   return(md/sd)
 }
-
+# tbd with only posttest sd available (the control group is marked by c)
 tbd2 <- function(m1,m2, sd2, mc1, mc2, sdc2){
   md = m1-m2 - (mc1-mc2)
   sd = (sd2+sdc2)/2
@@ -55,9 +68,10 @@ t2ES = function(t, df, n1, n2){
   d = t/sqrt(df)
   return(d2r(d, n1,n2))
 }
+```
 
-
-
+## Computing effect sizes from each primary study
+```{r}
 # Batink2013
 bat2013_MDE2_Y = ES.cs(-7.9, -3.4, 8.2, 8.5, 35, 36)
 bat2013_MDE3_Y = ES.cs(-7.6, -2.7, 9.6, 8.4, 29, 30)
@@ -206,44 +220,60 @@ wong2018_rXY = d2r(-3.27/wong.sd.cs, 69, 70)
 # Zhang2015
 zhang2015_rXY = -F2ES(4.469, 30, 30)
 
-library('metaSEM')
+```
+
+## Data Preparation for OSMASEM
+```{r warning=FALSE}
 library('xlsx')
-pridata = read.xlsx('/Users/luzhiming/000我/sysu/自己/主要/mediation-meta-analysis/Gu2015/Analyzied_data.xlsx', sheetIndex = 1)
-Pridata = data.frame(pridata)
-EffectSize = matrix(NA, 31, 4); colnames(EffectSize)=c('N','rXM','rMY','rXY')
+
+pridata = read.xlsx('/Users/luzhiming/000我/Github/MediationMeta-analysis_2023/EmpiricalExample/Analyzied_data.xlsx', sheetIndex = 1)
+pridata = data.frame(pridata)
+EffectSize = matrix(NA, nrow(pridata), 4); colnames(EffectSize)=c('N','rXM','rMY','rXY')
 for(i in 4:7){
-  for(j in 1:31){
-    if(i==4){
-    }
-    EffectSize[j,(i-3)] = as.numeric(Pridata[j,i])
+  for(j in 1:nrow(pridata)){
+    EffectSize[j,(i-3)] = try(as.numeric(pridata[j,i]),silent=TRUE)
   }
 }
 
 data = list(CorM = list(), N = c())
 data[['N']] = EffectSize[,1]
-for(i in 1:31){
-  na = matrix(NA,3,3); diag(na)=1; colnames(na) = rownames(na) = c('X','M','Y')
-  na[1,2] = na[2,1] = EffectSize[i,'rXM']
-  na[1,3] = na[3,1] = EffectSize[i,'rXY']
-  na[2,3] = na[3,2] = EffectSize[i,'rMY']
-  data[['CorM']][[i]] = na
+for(i in 1:nrow(pridata)){
+  temp = matrix(NA,3,3); diag(temp)=1; colnames(temp) = rownames(temp) = c('X','M','Y')
+  temp[1,2] = temp[2,1] = EffectSize[i,'rXM']
+  temp[1,3] = temp[3,1] = EffectSize[i,'rXY']
+  temp[2,3] = temp[3,2] = EffectSize[i,'rMY']
+  data[['CorM']][[i]] = temp
 }
-names(data[['CorM']]) = Pridata[,1]
+names(data[['CorM']]) = pridata[,1]
 
+```
 
+## CSMMA using OSMASEM
+```{r}
+library('metaSEM')
 MedM <- 'M ~ a*X
          Y ~ cp*X + b*M'
 RAM1 <- lavaan2RAM(MedM, obs.variables=c("X", "M", "Y"))
 RAM1$S[1,1] <- 1
 M0 <- create.vechsR(A0=RAM1$A, S0=RAM1$S)
-T0 <- create.Tau2(RAM=RAM1, RE.type='Diag', Transform="expLog", RE.startvalues=0.05)
+T0 <- create.Tau2(RAM=RAM1, RE.type='Zero', RE.startvalues=0.05)
 df <- Cor2DataFrame(data$CorM, data$N)
 fit0 = osmasem(model.name="mediationMA", Mmatrix=M0, Tmatrix=T0, data=df)
-summary(fit0)
+res = summary(fit0)
+```
 
-IE.se = sqrt(0.636^2*vcov(fit0)[3,3] + 0.263^2*4*vcov(fit0)[1,1] + 2*0.318*0.263*vcov(fit0)[1,3])
+## Significance testing of the indirect effect
 
-1-pnorm(0.318*0.263/IE.se)
+```{r}
+a.par.est = res$parameters$Estimate[1]/.5
+a.pValue = 1-pnorm(abs((a.par.est)/sqrt(4*vcov.osmasem(fit0)[1,1])))
 
+b.std.est = res$parameters$Estimate[3]
+b.pValue = 1-pnorm(abs((b.std.est)/sqrt(vcov.osmasem(fit0)[3,3])))
 
+IE.par.est = a.par.est*b.std.est
+IE.se = sqrt(a.par.est^2*vcov.osmasem(fit0)[3,3] + 4*b.std.est^2*vcov.osmasem(fit0)[1,1] + 4*a.par.est*b.std.est*vcov.osmasem(fit0)[1,3])
 
+IE.zValue = IE.par.est/IE.se
+IE.pValue = 1-pnorm(abs(IE.zValue))
+```
